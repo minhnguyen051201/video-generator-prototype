@@ -1,0 +1,12 @@
+# --- FastAPI core ---
+fastapi==0.115.2
+uvicorn[standard]==0.30.6  # ASGI server for running FastAPI
+
+# --- Database + ORM ---
+SQLAlchemy==2.0.44          # ORM for models and queries
+PyMySQL==1.1.1              # MySQL driver (SQLAlchemy uses this under the hood)
+cryptography==43.0.3
+
+# --- Environment & configuration ---
+python-dotenv==1.0.1        # Load .env variables for DB credentials
+pydantic==2.9.2             # Data validation (FastAPI depends on this)

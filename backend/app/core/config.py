@@ -1,5 +1,9 @@
-import os
-
-# Load environment variables manually
-APP_ENV = os.getenv("APP_ENV", "dev")
-API_TOKEN = os.getenv("API_TOKEN", "dev-token-123")
+# from pydantic import BaseSettings
+#
+#
+# class Settings(BaseSettings):
+#     DB_URL: str
+#     SECRET_KEY: str
+#
+#
+# settings = Settings()
