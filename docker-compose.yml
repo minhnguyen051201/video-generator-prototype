@@ -1,0 +1,59 @@
+---
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: nextjs_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    depends_on:
+      - backend
+    networks:
+      - app_network
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    command: npm run dev
+
+  backend:
+    build:
+      context: ./backend
+    container_name: fast_api_video_generator
+    restart: always
+    volumes:
+      - ./backend:/app/
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./.env
+    depends_on:
+      - mysql
+    networks:
+      - app_network
+
+  mysql:
+    image: mysql:8.0
+    restart: always
+    container_name: video_db
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-password}
+      - MYSQL_DATABASE=${MYSQL_DATABASE:-video_db}
+      - MYSQL_USER=${MYSQL_USER:-video_user}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD:-userpassword}
+    ports:
+      - "3307:3306"
+    networks:
+      - app_network
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+networks:
+  app_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
