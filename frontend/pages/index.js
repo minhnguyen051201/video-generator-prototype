@@ -27,6 +27,7 @@ export default function Home() {
   return (
     <div style={{ textAlign: "center", paddingTop: "50px", fontSize: "20px" }}>
       <h1>🚀 FastAPI + Next.js Integration</h1>
+      <h1>Hello </h1>
       <p>{status}</p>
     </div>
   );
