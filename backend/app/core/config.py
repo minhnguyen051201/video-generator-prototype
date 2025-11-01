@@ -1,8 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import field_validator
 from functools import lru_cache
 from pathlib import Path
 
-from typing import Optional
+from typing import List
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -16,23 +17,28 @@ class Settings(BaseSettings):
     # --- Application ---
     APP_NAME: str = "Video Generator API"
     API_V1_STR: str = "/api/v1"
-    DEBUG: bool = True
+    DEBUG: bool = False
 
     # --- Database ---
-    MYSQL_USER: Optional[str] = None
-    MYSQL_PASSWORD: Optional[str] = None
-    MYSQL_DATABASE: Optional[str] = None
-    MYSQL_HOST: Optional[str] = None  # matches docker-compose service name
-    MYSQL_ROOT_PASSWORD: Optional[str] = None  # optional, only used by container
-    MYSQL_PORT: Optional[str] = None
+    MYSQL_USER: str
+    MYSQL_PASSWORD: str
+    MYSQL_DATABASE: str
+    MYSQL_HOST: str  # matches docker-compose service name
+    MYSQL_ROOT_PASSWORD: str  # optional, only used by container
+    MYSQL_PORT: str
 
     # --- Frontend ---
-    FRONTEND_URL: str = "http://localhost:3000"
+    ALLOWED_ORIGINS: List[str] | str
 
     # Pydantic v2 configuration
+
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
     )
+
+    @field_validator("ALLOWED_ORIGINS")
+    def parse_allowed_origins(cls, v: str) -> List[str]:
+        return v.split(",") if v else []
 
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:

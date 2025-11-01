@@ -9,7 +9,7 @@ This file:
 """
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy.orm import sessionmaker
 from app.core.config import get_settings
 
 
@@ -41,12 +41,6 @@ SessionLocal = sessionmaker(
     bind=engine,
     expire_on_commit=False,  # Keeps objects accessible after commit
 )
-
-# ---------------------------------------------------------------------
-# Base Class for ORM Models
-# ---------------------------------------------------------------------
-# All models should inherit from this Base.
-Base = declarative_base()
 
 
 # ---------------------------------------------------------------------

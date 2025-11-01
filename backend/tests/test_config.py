@@ -36,6 +36,10 @@ def test_env_variables_exist(settings):
         assert value is not None, f"❌ Missing environment variable: {var}"
         assert value != "", f"❌ Empty value for variable: {var}"
 
+    assert settings.ALLOWED_ORIGINS == [
+        "https://localhost:3000",
+        "https://localhost:5173",
+    ]
     print("✅ All required environment variables are loaded correctly.")
 
 
