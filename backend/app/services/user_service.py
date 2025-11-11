@@ -65,3 +65,17 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     db.commit()
     db.refresh(new_user)
     return new_user
+
+
+def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
+    """Return the user if the provided credentials are valid."""
+
+    user = get_user_by_email(db, email=email)
+
+    if not user:
+        return None
+
+    if not verify_password(password, user.hashed_password):
+        return None
+
+    return user

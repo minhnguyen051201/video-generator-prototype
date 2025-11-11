@@ -8,6 +8,7 @@ Purpose:
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import Base
 
 
@@ -26,7 +27,7 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), unique=True, nullable=False)
-    hashed_password = Column(String(255), nullable=False)
+    hashed_password: Mapped[str] = mapped_column(String(255), nullable=True)
     role = Column(String(255), nullable=False)
 
     # Audit fields (auto-managed)

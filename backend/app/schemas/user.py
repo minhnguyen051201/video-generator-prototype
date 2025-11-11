@@ -8,7 +8,7 @@ Purpose:
 """
 
 from typing import Optional
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import datetime
 
 
@@ -42,7 +42,12 @@ class UserOut(UserBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = (
-            True  # enable ORM-to-Pydantic conversion (formerly orm_mode=True)
-        )
+    model_config = ConfigDict(from_attributes=True)
+
+
+# ---------------------------------------------------------------------
+# Schema for User Login (Authentication)
+# ---------------------------------------------------------------------
+class UserLogin(UserBase):
+    email: EmailStr
+    password: str = Field(..., min_length=6, max_length=50)

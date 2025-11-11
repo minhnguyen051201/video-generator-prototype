@@ -50,10 +50,6 @@ SessionLocal = sessionmaker(
 def get_db():
     """
     FastAPI dependency that provides a SQLAlchemy session.
-
-    Example:
-        def get_user_list(db: Session = Depends(get_db)):
-            return db.query(User).all()
     """
     db = SessionLocal()
     try:

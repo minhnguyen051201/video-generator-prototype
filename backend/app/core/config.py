@@ -1,9 +1,8 @@
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import field_validator
 from functools import lru_cache
 from pathlib import Path
 
-from typing import List
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
@@ -18,27 +17,56 @@ class Settings(BaseSettings):
     APP_NAME: str = "Video Generator API"
     API_V1_STR: str = "/api/v1"
     DEBUG: bool = False
+    SECRET_KEY: str = Field(..., description="Secret key used to sign JWT tokens")
+    ALGORITHM: str = Field(
+        default="HS256", description="Algorithm used for JWT token signing"
+    )
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=30,
+        description="Number of minutes before issued access tokens expire",
+        ge=1,
+    )
 
     # --- Database ---
-    MYSQL_USER: str
-    MYSQL_PASSWORD: str
-    MYSQL_DATABASE: str
-    MYSQL_HOST: str  # matches docker-compose service name
-    MYSQL_ROOT_PASSWORD: str  # optional, only used by container
-    MYSQL_PORT: str
+    MYSQL_USER: str = Field(..., description="MySQL username")
+    MYSQL_PASSWORD: str = Field(..., description="MySQL password")
+    MYSQL_DATABASE: str = Field(..., description="MySQL database name")
+    MYSQL_HOST: str = Field(..., description="MySQL host or service name")
+    MYSQL_ROOT_PASSWORD: str | None = Field(
+        default=None,
+        description="Optional root password used only by the MySQL container",
+    )
+    MYSQL_PORT: int = Field(..., description="MySQL port")
 
     # --- Frontend ---
-    ALLOWED_ORIGINS: List[str] | str
+    ALLOWED_ORIGINS: list[str] | str = Field(
+        default_factory=lambda: ["http://localhost:3000"],
+        description="Comma-separated list of origins allowed by CORS",
+    )
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def parse_allowed_origins(
+        cls, value: str | list[str] | tuple[str, ...] | None
+    ) -> list[str]:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [origin.strip() for origin in value.split(",") if origin.strip()]
+        if isinstance(value, (list, tuple)):
+            return [
+                origin.strip()
+                for origin in value
+                if isinstance(origin, str) and origin.strip()
+            ]
+
+        raise TypeError("ALLOWED_ORIGINS must be a string or a sequence of strings")
 
     # Pydantic v2 configuration
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env", env_file_encoding="utf-8"
     )
-
-    @field_validator("ALLOWED_ORIGINS")
-    def parse_allowed_origins(cls, v: str) -> List[str]:
-        return v.split(",") if v else []
 
     @property
     def SQLALCHEMY_DATABASE_URL(self) -> str:
