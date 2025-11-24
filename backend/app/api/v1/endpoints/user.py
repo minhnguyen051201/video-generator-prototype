@@ -13,11 +13,12 @@ from sqlalchemy.orm import Session
 
 from app.db.session import get_db
 from app.schemas.user import UserCreate, UserOut, UserLogin
-from app.services import user_service
 
 from app.core import security
 from app.core.config import get_settings
+
 from app.schemas.auth import Token
+from app.services import user_service
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -48,23 +49,6 @@ def register_user(user_data: UserCreate, db: Session = Depends(get_db)):
 
 
 # ---------------------------------------------------------------------
-# Get User by ID
-# ---------------------------------------------------------------------
-@router.get("/{user_id}", response_model=UserOut)
-def get_user(user_id: int, db: Session = Depends(get_db)):
-    """
-    Retrieve a specific user by ID.
-    """
-    user = user_service.get_user_by_id(db, user_id)
-    if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"User with ID {user_id} not found.",
-        )
-    return user
-
-
-# ---------------------------------------------------------------------
 # Authenticate a User
 # ---------------------------------------------------------------------
 @router.post("/login", response_model=Token)
@@ -86,3 +70,20 @@ def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
     )
 
     return Token(access_token=access_token)
+
+
+# ---------------------------------------------------------------------
+# Get User by ID
+# ---------------------------------------------------------------------
+@router.get("/{user_id}", response_model=UserOut)
+def get_user(user_id: int, db: Session = Depends(get_db)):
+    """
+    Retrieve a specific user by ID.
+    """
+    user = user_service.get_user_by_id(db, user_id)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"User with ID {user_id} not found.",
+        )
+    return user

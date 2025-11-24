@@ -12,6 +12,7 @@ python-dotenv==1.0.1        # Load .env variables for DB credentials
 pydantic==2.9.2             # Data validation (FastAPI depends on this)
 pydantic_settings
 pydantic[email]==2.9.2
+python-multipart
 
 # --- Testing ---
 pytest 
@@ -19,4 +20,9 @@ pytest
 # --- Security / Password Hashing --- 
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
+
+# --- Networking --- 
+websockets
+requests
+
 
