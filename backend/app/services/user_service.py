@@ -13,7 +13,6 @@ from app.models.user import User
 from app.schemas.user import UserCreate
 from passlib.context import CryptContext
 
-
 # ---------------------------------------------------------------------
 # Password Hashing Setup
 # ---------------------------------------------------------------------

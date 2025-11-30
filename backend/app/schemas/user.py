@@ -19,7 +19,6 @@ class UserBase(BaseModel):
     """Common attributes shared across all user operations."""
 
     email: EmailStr
-    username: str
 
 
 # ---------------------------------------------------------------------
@@ -28,6 +27,7 @@ class UserBase(BaseModel):
 class UserCreate(UserBase):
     """Used when a user registers an account."""
 
+    username: str
     password: str = Field(..., min_length=6, max_length=50)
 
 
@@ -38,7 +38,7 @@ class UserOut(UserBase):
     """Used when returning user information (response model)."""
 
     id: int
-    role: str
+    username: str
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
 

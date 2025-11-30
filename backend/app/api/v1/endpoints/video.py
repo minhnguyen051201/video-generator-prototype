@@ -1,113 +1,69 @@
-import json
-from typing import Optional
-import uuid
-import requests
-import websockets
-from pathlib import Path
-from fastapi import APIRouter, UploadFile, File, Form
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends, UploadFile, File, Form, HTTPException
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.models.video import Video
+from app.schemas.video import VideoCreate
+from app.services.video_service import generate_video_flow
+from datetime import datetime
 
-router = APIRouter()
-
-COMFY_URL = "http://host.docker.internal:8188"
-COMFY_WS_URL = "ws://host.docker.internal:8188/ws"
-COMFY_INPUT_DIR = "/Users/minhnguyen/Workspace/AI_Project/model_inference/ComfyUI/input"
+router = APIRouter(prefix="/videos", tags=["Videos"])
 
 
-@router.post("/generate")
+# -----------------------------
+#  POST /videos/generate
+# -----------------------------
+@router.post("/generate", response_model=VideoCreate)
 async def generate_video(
+    user_id: int = Form(...),
     positive_prompt: str = Form(...),
     negative_prompt: str = Form(""),
     image: UploadFile = File(None),
+    db: Session = Depends(get_db),
 ):
     """
-    1. Load the workflow JSON
-    2. Inject dynamic prompt + image
-    3. Trigger ComfyUI
-    4. Wait for result via websocket
-    5. Save final output locally into frontend/public
-    6. Return public URL
+    1. Upload image to ComfyUI
+    2. Inject workflow params
+    3. Execute workflow
+    4. Wait for final video
+    5. Save metadata to DB
     """
 
-    # ---------------------------------------
-    # 1. Load workflow
-    # ---------------------------------------
-    with open("/app/app/public/api_test_workflow.json", "r") as f:
-        workflow = json.load(f)
+    # 1. Run the actual generation logic
+    try:
+        result = await generate_video_flow(positive_prompt, negative_prompt, image)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"ComfyUI error: {str(e)}")
 
-    # ---------------------------------------
-    # 2. Inject prompts
-    # ---------------------------------------
-    workflow["6"]["inputs"]["text"] = positive_prompt
-    workflow["7"]["inputs"]["text"] = negative_prompt
-
-    # ---------------------------------------
-    # 3. Inject uploaded image (if provided)
-    # ---------------------------------------
-    comfy_files = [("image", (image.filename, image.file, image.content_type))]
-    comfy_image_name = None
-
-    if image is not None:
-        comfy_files = {"image": (image.filename, image.file, image.content_type)}
-
-        res = requests.post(
-            "http://host.docker.internal:8188/upload/image", files=comfy_files
+    if result["output_file"] is None:
+        raise HTTPException(
+            status_code=500, detail="Model did not return any video file."
         )
 
-        # Example response: {"name": "cowboy_walk.png"}
-        comfy_image_name = res.json()["name"]
+    # 2. Extract metadata
+    metadata = result.get("metadata", {})
 
-    # ---------------------------------------
-    # 4. Send workflow to ComfyUI
-    # ---------------------------------------
+    # 3. Save in DB
+    new_video = Video(
+        user_id=user_id,
+        # output
+        file_name=result.get("output_file"),
+        comfy_subfolder=metadata.get("subfolder"),
+        # input
+        input_image_url=result["input_image"],
+        positive_prompt=positive_prompt,
+        negative_prompt=negative_prompt,
+        # metadata
+        duration=metadata.get("duration"),
+        resolution=metadata.get("resolution"),
+        width=metadata.get("width"),
+        height=metadata.get("height"),
+        fps=metadata.get("fps"),
+        codec=metadata.get("codec"),
+        created_at=datetime.now(),
+    )
 
-    # If image uploaded, assign it to node 1206
-    if comfy_image_name:
-        workflow["1206"]["inputs"]["image"] = comfy_image_name
+    db.add(new_video)
+    db.commit()
+    db.refresh(new_video)
 
-    resp = requests.post(f"{COMFY_URL}/prompt", json={"prompt": workflow})
-
-    # ---------------------------------------
-    # 5. Wait for the final result
-    # ---------------------------------------
-    async with websockets.connect(COMFY_WS_URL) as ws:
-        final_result = None
-        while True:
-            msg = await ws.recv()
-            event = json.loads(msg)
-
-            # "result" event = final output ready
-            if event.get("type") == "result":
-                final_result = event["data"]
-                break
-
-    # Check from this one
-    # ---------------------------------------
-    # 6. Extract output file info
-    # ---------------------------------------
-    output_info = final_result["output"]["images"][0]
-    filename = output_info["filename"]
-    subfolder = output_info["subfolder"]
-
-    # ---------------------------------------
-    # 7. Download file from ComfyUI API
-    # ---------------------------------------
-    file_bytes = requests.get(
-        f"{COMFY_URL}/view?filename={filename}&subfolder={subfolder}&type=output"
-    ).content
-
-    # ---------------------------------------
-    # 8. Save to Next.js public folder
-    # ---------------------------------------
-    saved_filename = f"{uuid.uuid4()}_{filename}"
-    output_path = f"../../../public/{saved_filename}"
-
-    with open(output_path, "wb") as f:
-        f.write(file_bytes)
-
-    # ---------------------------------------
-    # 9. Return PUBLIC URL for frontend
-    # ---------------------------------------
-    public_url = f"/generated_videos/{saved_filename}"
-
-    return JSONResponse({"video_url": public_url})
+    return new_video

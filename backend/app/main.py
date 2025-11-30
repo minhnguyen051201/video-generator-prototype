@@ -3,7 +3,12 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.router import api_router
 
+from app.db.base import Base
+from app.db.session import engine
+
 app = FastAPI(title="Video Generator API", version="0.1.0")
+
+Base.metadata.create_all(bind=engine)
 
 app.add_middleware(
     CORSMiddleware,

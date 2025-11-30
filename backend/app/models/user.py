@@ -8,7 +8,7 @@ Purpose:
 """
 
 from sqlalchemy import Column, Integer, String, DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 
@@ -28,17 +28,16 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(100), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=True)
-    role = Column(String(255), nullable=False)
 
     # Audit fields (auto-managed)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    # Video reference
+    videos = relationship("Video", back_populates="user", cascade="all, delete-orphan")
+
     # ------------------------------------------------------------------
     # Representation helper
     # ------------------------------------------------------------------
     def __repr__(self) -> str:
-        return (
-            f"<User(id={self.id}, email='{self.email}', "
-            f"username='{self.username}', role='{self.role}')>"
-        )
+        return f"<User(id={self.id}, email='{self.email}', username='{self.username}')>"

@@ -11,3 +11,4 @@ Base = declarative_base()
 # These imports are required for SQLAlchemy metadata discovery
 def init_models():
     from app.models.user import User
+    from app.models.video import Video
