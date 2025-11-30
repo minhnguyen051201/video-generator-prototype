@@ -20,6 +20,7 @@ pytest
 # --- Security / Password Hashing --- 
 passlib[bcrypt]==1.7.4
 bcrypt==4.1.2
+PyJWT
 
 # --- Networking --- 
 websockets

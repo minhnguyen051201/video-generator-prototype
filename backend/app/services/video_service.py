@@ -172,17 +172,16 @@ async def generate_video_flow(
         raise Exception("No video returned by ComfyUI")
 
     final_video = output_videos[0]  # dict: {filename, subfolder, type}
-    filename = final_video["filename"]
+    output_filename = final_video["filename"]
 
     # 7. Extract metadata from ComfyUI file
-    video_metadata = extract_metadata_from_comfyui(filename)
+    video_metadata = extract_metadata_from_comfyui(output_filename)
     print(video_metadata)
 
     return {
         "prompt_id": prompt_id,
         "input_image": image_name,
-        "output_file": filename,
+        "output_filename": output_filename,
         "subfolder": final_video.get("subfolder", ""),
         "metadata": video_metadata,
     }
-

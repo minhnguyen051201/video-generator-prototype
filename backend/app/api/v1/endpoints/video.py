@@ -46,7 +46,7 @@ async def generate_video(
     new_video = Video(
         user_id=user_id,
         # output
-        file_name=result.get("output_file"),
+        output_filename=result.get("output_filename"),
         comfy_subfolder=metadata.get("subfolder"),
         # input
         input_image_url=result["input_image"],
