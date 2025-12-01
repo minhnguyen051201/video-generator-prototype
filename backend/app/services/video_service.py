@@ -1,14 +1,14 @@
-import subprocess
+import cv2
 import json
 import requests
 import tempfile
 import os
-import websockets
+import asyncio
+import aiohttp
 
 from fastapi import UploadFile
 
 COMFY_URL = "http://host.docker.internal:8188"
-COMFY_WS_URL = "ws://host.docker.internal:8188/ws"
 
 
 # -----------------------------------------------------------
@@ -70,118 +70,183 @@ def submit_workflow(workflow: dict):
 # -----------------------------------------------------------
 # Wait for ComfyUI websocket result
 # -----------------------------------------------------------
-async def wait_for_comfy_result(prompt_id: str):
-    async with websockets.connect(COMFY_WS_URL) as ws:
+
+
+async def wait_for_comfy_result(prompt_id: str, timeout: int = 900):
+    """
+    Poll ComfyUI /history/{prompt_id} until output is ready.
+    Works in Docker + ComfyUI Desktop.
+    Replaces WebSocket (which cannot cross macOS <-> Docker boundary).
+    """
+
+    start = asyncio.get_event_loop().time()
+
+    async with aiohttp.ClientSession() as session:
         while True:
-            msg = await ws.recv()
-            event = json.loads(msg)
+            # timeout guard
+            elapsed = asyncio.get_event_loop().time() - start
+            if elapsed > timeout:
+                raise RuntimeError("Timed out waiting for ComfyUI result")
 
-            # FINAL RESULT
-            if (
-                event.get("type") == "result"
-                and event["data"]["prompt_id"] == prompt_id
-            ):
-                return event["data"]
+            try:
+                async with session.get(f"{COMFY_URL}/history/{prompt_id}") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
 
+                        # Check if history entry exists AND output is ready
+                        if (
+                            prompt_id in data
+                            and "outputs" in data[prompt_id]
+                            and data[prompt_id]["outputs"]
+                        ):
+                            return data[prompt_id]["outputs"]
+
+            except Exception as e:
+                print(f"[wait_for_comfy_result] Error: {e}")
+
+            # poll every 2 seconds
+            await asyncio.sleep(2)
+
+
+# async def wait_for_comfy_result(prompt_id: str, timeout: int = 120):
+#     try:
+#         async with websockets.connect(COMFY_WS_URL) as ws:
+#             while True:
+#                 try:
+#                     msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
+#                 except asyncio.TimeoutError:
+#                     raise RuntimeError("Timed out waiting for ComfyUI result")
+#
+#                 event = json.loads(msg)
+#
+#                 if event.get("type") == "result":
+#                     return event["data"]
+#
+#     except Exception as e:
+#         raise RuntimeError(f"WebSocket failed: {str(e)}")
+#
 
 # -----------------------------------------------------------
 # Extract metadata from ComfyUI output video
 # -----------------------------------------------------------
-def extract_metadata_from_comfyui(filename: str):
-    # Download video bytes
-    video_bytes = requests.get(
-        f"{COMFY_URL}/view?filename={filename}&type=output"
-    ).content
 
-    if not video_bytes:
-        return None
 
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
-        tmp.write(video_bytes)
-        temp_path = tmp.name
-
-    # ffprobe
-    cmd = [
-        "ffprobe",
-        "-v",
-        "error",
-        "-select_streams",
-        "v:0",
-        "-show_entries",
-        "stream=width,height,avg_frame_rate,duration,codec_name",
-        "-of",
-        "json",
-        temp_path,
-    ]
-
+def extract_video_metadata(filename: str | None):
+    """
+    1. Download video from ComfyUI output endpoint
+    2. Save temporarily
+    3. Extract duration, width, height, fps
+    """
     try:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        info = json.loads(proc.stdout)
-        stream = info["streams"][0]
+        # --- 1. Download video bytes from ComfyUI ---
+        url = f"http://host.docker.internal:8188/view?filename={filename}&type=output"
+        resp = requests.get(url)
 
-        # convert fps
-        fps_str = stream.get("avg_frame_rate", "0/1")
-        num, den = fps_str.split("/")
-        fps = round(float(num) / float(den), 2) if den != "0" else None
+        if resp.status_code != 200:
+            raise Exception(f"Failed to download video: {resp.status_code}")
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp4") as tmp:
+            tmp.write(resp.content)
+            tmp_path = tmp.name
+
+        # --- 2. Extract metadata using OpenCV ---
+        cap = cv2.VideoCapture(tmp_path)
+
+        if not cap.isOpened():
+            raise Exception("OpenCV failed to open video")
+
+        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
+
+        duration = frames / fps if (fps > 0 and frames > 0) else None
 
         metadata = {
-            "width": stream.get("width"),
-            "height": stream.get("height"),
-            "resolution": f"{stream.get('width')}x{stream.get('height')}",
-            "duration": float(stream.get("duration", 0)),
+            "width": width,
+            "height": height,
             "fps": fps,
-            "codec": stream.get("codec_name"),
+            "duration": duration,
+            "resolution": f"{width}x{height}",
         }
 
-    finally:
-        os.remove(temp_path)
+        return metadata
 
-    return metadata
+    except Exception as e:
+        raise Exception(f"OpenCV metadata extraction failed: {str(e)}")
+
+    finally:
+        if "tmp_path" in locals() and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+
+# extract video output
+def extract_video_output(result_json):
+    # 1. Get the first key ("1336")
+    key = list(result_json.keys())[0]
+
+    # 2. Access the gifs list
+    gifs = result_json[key].get("gifs", [])
+
+    if not gifs:
+        raise ValueError("No GIF/MP4 outputs found in ComfyUI response")
+
+    file_info = gifs[0]
+
+    # 3. Extract fields
+    filename = file_info.get("filename")
+    fullpath = file_info.get("fullpath")
+    format = file_info.get("format")
+
+    return {
+        "filename": filename,
+        "localpath": fullpath,
+        "format": format,
+    }
 
 
 # -----------------------------------------------------------
 # Main generation flow
 # -----------------------------------------------------------
-async def generate_video_flow(
-    positive_prompt: str, negative_prompt: str, image: UploadFile
-):
-    # 1. Upload image first
-    image_name = upload_image_to_comfy(image) if image else None
+async def generate_video_flow(positive_prompt, negative_prompt, image):
+    try:
+        # Upload input image
+        input_image = upload_image_to_comfy(image) if image else None
 
-    # 2. Load workflow
-    workflow = load_workflow("/app/app/public/api_test_workflow.json")
+        # Load workflow file
+        workflow = load_workflow("/app/app/public/api_test_workflow.json")
 
-    # 3. Inject params
-    workflow = inject_workflow_params(
-        workflow,
-        negative_prompt=negative_prompt,
-        positive_prompt=positive_prompt,
-        image_name=image_name,
-    )
+        # Inject prompts + image
+        workflow = inject_workflow_params(
+            workflow,
+            positive_prompt=positive_prompt,
+            negative_prompt=negative_prompt,
+            image_name=input_image,
+        )
 
-    # 4. Submit workflow
-    prompt_id = submit_workflow(workflow)
+        # Trigger comfyUI
+        prompt_id = submit_workflow(workflow)
 
-    # 5. Wait for completion
-    result = await wait_for_comfy_result(prompt_id)
+        # Wait for final output
+        result = await wait_for_comfy_result(prompt_id)
 
-    # 6. Extract true video output (ComfyUI uses "videos")
-    output_videos = result.get("output", {}).get("videos", [])
+        result_json = extract_video_output(result_json=result)
 
-    if not output_videos:
-        raise Exception("No video returned by ComfyUI")
+        filename = result_json.get("filename")
+        localpath = result_json.get("localpath")
+        format = result_json.get("format")
 
-    final_video = output_videos[0]  # dict: {filename, subfolder, type}
-    output_filename = final_video["filename"]
+        # Extract ffprobe metadata
+        metadata = extract_video_metadata(filename)
 
-    # 7. Extract metadata from ComfyUI file
-    video_metadata = extract_metadata_from_comfyui(output_filename)
-    print(video_metadata)
+        return {
+            "prompt_id": prompt_id,
+            "input_image": input_image,
+            "filename": filename,
+            "format": format,
+            "localpath": localpath,
+            "metadata": metadata,
+        }
 
-    return {
-        "prompt_id": prompt_id,
-        "input_image": image_name,
-        "output_filename": output_filename,
-        "subfolder": final_video.get("subfolder", ""),
-        "metadata": video_metadata,
-    }
+    except Exception as e:
+        raise RuntimeError(f"Video generation flow failed: {str(e)}")

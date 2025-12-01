@@ -6,6 +6,7 @@ from app.schemas.video import VideoCreate
 from app.services.video_service import generate_video_flow
 from datetime import datetime
 
+
 router = APIRouter(prefix="/videos", tags=["Videos"])
 
 
@@ -34,7 +35,7 @@ async def generate_video(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"ComfyUI error: {str(e)}")
 
-    if result["output_file"] is None:
+    if result["filename"] is None:
         raise HTTPException(
             status_code=500, detail="Model did not return any video file."
         )
@@ -46,10 +47,11 @@ async def generate_video(
     new_video = Video(
         user_id=user_id,
         # output
-        output_filename=result.get("output_filename"),
-        comfy_subfolder=metadata.get("subfolder"),
+        filename=result.get("filename"),
+        format=result.get("format"),
+        localpath=result.get("localpaht"),
         # input
-        input_image_url=result["input_image"],
+        input_image=result["input_image"],
         positive_prompt=positive_prompt,
         negative_prompt=negative_prompt,
         # metadata
@@ -58,7 +60,7 @@ async def generate_video(
         width=metadata.get("width"),
         height=metadata.get("height"),
         fps=metadata.get("fps"),
-        codec=metadata.get("codec"),
+        # created_at
         created_at=datetime.now(),
     )
 

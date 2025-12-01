@@ -14,7 +14,7 @@ class Video(Base):
     )
 
     # input data
-    input_image_url = Column(String(255), nullable=True)
+    input_image = Column(String(255), nullable=True)
     positive_prompt = Column(Text, nullable=True)
     negative_prompt = Column(Text, nullable=True)
 
@@ -24,11 +24,11 @@ class Video(Base):
     width = Column(String(255), nullable=True)
     height = Column(String(255), nullable=True)
     fps = Column(String(255), nullable=True)
-    codec = Column(String(255), nullable=True)
 
     # generated output
-    filename = Column(String(255), nullable=False)
-    comfy_subfolder = Column(String(255), nullable=True)
+    filename = Column(String(255), nullable=True)
+    localpath = Column(String(255), nullable=True)
+    format = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, default=datetime.now)
 
