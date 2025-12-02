@@ -24,54 +24,6 @@ export type User = {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-function decodeJwtPayload(token: string): unknown | null {
-  const parts = token.split(".");
-  if (parts.length < 2) {
-    return null;
-  }
-
-  try {
-    const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
-    const payload = atob(base64);
-    return JSON.parse(payload);
-  } catch (error) {
-    console.error("Failed to decode JWT payload", error);
-    return null;
-  }
-}
-
-export function getCurrentUserId(): number | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  const token = localStorage.getItem("authToken");
-  if (!token) {
-    return null;
-  }
-
-  const payload = decodeJwtPayload(token);
-  if (!payload || typeof payload !== "object") {
-    return null;
-  }
-
-  const candidateId =
-    (payload as Record<string, unknown>)["sub"] ??
-    (payload as Record<string, unknown>)["user_id"] ??
-    (payload as Record<string, unknown>)["userId"];
-
-  if (typeof candidateId === "number") {
-    return candidateId;
-  }
-
-  if (typeof candidateId === "string") {
-    const parsed = Number(candidateId);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
-
-  return null;
-}
-
 export async function loginUser(credentials: LoginRequest): Promise<AuthToken> {
   const response = await fetch(`${API_BASE_URL}/api/v1/users/login`, {
     method: "POST",

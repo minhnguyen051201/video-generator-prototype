@@ -9,7 +9,6 @@ import {
   GenerateVideoRequest,
   generateVideo,
 } from "../../services/video/videoService";
-import { getCurrentUserId } from "../../services/user/userService";
 
 // --- Icons ---
 const IconDownload = (props: any) => (
@@ -163,7 +162,7 @@ export default function Page() {
   const [audiosEnabled, setAudiosEnabled] = useState(false);
   const [positivePrompt, setPositivePrompt] = useState("");
   const [negativePrompt, setNegativePrompt] = useState("");
-  const [userId, setUserId] = useState<number | null>(null);
+  const [userId, setUserId] = useState<number>(1);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -199,7 +198,7 @@ export default function Page() {
     }
 
     if (!userId || Number.isNaN(userId)) {
-      setError("You must be logged in to generate a video.");
+      setError("Please provide a valid user ID.");
       return;
     }
 
@@ -239,15 +238,6 @@ export default function Page() {
       setIsGenerating(false);
     }
   };
-
-  useEffect(() => {
-    const detectedUserId = getCurrentUserId();
-    if (detectedUserId) {
-      setUserId(detectedUserId);
-    } else {
-      setError("You must be logged in to generate a video.");
-    }
-  }, []);
 
   useEffect(() => {
     if (duration > 0 && currentTime > duration) {
@@ -371,18 +361,36 @@ export default function Page() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:items-center">
-              <div className="flex items-center gap-2 text-sm text-gray-400">
-                <span className="font-medium text-white">Current user:</span>
-                <span className="px-2 py-1 rounded bg-[#333333] text-white">
-                  {userId ?? "Not signed in"}
-                </span>
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-400">User ID</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={userId ?? ""}
+                  onChange={(event) => setUserId(Number(event.target.value))}
+                  className="w-full bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
+                  placeholder="e.g. 1"
+                />
               </div>
 
-              <div className="flex items-center text-sm text-gray-400">
-                <span className="font-medium text-white mr-2">Reference image:</span>
-                <span className="px-2 py-1 rounded bg-[#333333] text-white">
-                  {selectedImage ? selectedImage.name : "Use the Upload Files button"}
-                </span>
+              <div
+                className="flex items-center justify-between gap-3 border border-dashed border-gray-600 rounded-lg px-3 py-2 cursor-pointer hover:border-[#FF6633]"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <div className="flex flex-col text-sm text-gray-400">
+                  <span className="font-medium text-white">Upload image (optional)</span>
+                  <span className="text-xs text-gray-500">
+                    {selectedImage ? selectedImage.name : "PNG, JPG, JPEG"}
+                  </span>
+                </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <IconDownload className="w-5 h-5 rotate-180 text-gray-400" />
               </div>
 
               <div className="flex justify-end">
@@ -486,13 +494,6 @@ export default function Page() {
             <span className="mt-2 text-sm">
               {selectedImage ? selectedImage.name : "Upload files"}
             </span>
-            <input
-              ref={imageInputRef}
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="hidden"
-            />
           </div>
 
           {/* Export */}
