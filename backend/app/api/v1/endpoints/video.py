@@ -49,7 +49,7 @@ async def generate_video(
         # output
         filename=result.get("filename"),
         format=result.get("format"),
-        localpath=result.get("localpaht"),
+        localpath=result.get("localpath"),
         # input
         input_image=result["input_image"],
         positive_prompt=positive_prompt,
