@@ -4,11 +4,33 @@ import Button from "../../components/Button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Home } from "lucide-react";
+import { loginUser } from "../../services/user/userService";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const handleLogin = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const token = await loginUser({ email, password });
+      localStorage.setItem("authToken", token.access_token);
+      router.push("/studio");
+    } catch (loginError) {
+      if (loginError instanceof Error) {
+        setError(loginError.message);
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#5D4A3C] to-[#3E2F25] px-4 relative">
@@ -24,12 +46,8 @@ export default function LoginPage() {
 
       {/* Login Card */}
       <div className="relative w-full max-w-md bg-[#4F3D32] rounded-xl p-8 shadow-lg z-10">
-        <h1 className="text-4xl font-bold text-[#EFDECD] mb-2 text-center">
-          Login
-        </h1>
-        <p className="text-white/80 text-center mb-6">
-          Welcome back! Please enter your credentials.
-        </p>
+        <h1 className="text-4xl font-bold text-[#EFDECD] mb-2 text-center">Login</h1>
+        <p className="text-white/80 text-center mb-6">Welcome back! Please enter your credentials.</p>
 
         {/* Form Inputs */}
         <input
@@ -47,21 +65,21 @@ export default function LoginPage() {
           className="w-full mb-6 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
 
+        {error ? <p className="text-red-400 text-sm mb-4 text-center">{error}</p> : null}
+
         {/* Login Button */}
         <Button
           className="!bg-[#D89F5C] !text-[#4A392C] w-full py-2 rounded-md text-lg font-semibold hover:opacity-90"
-          onClick={() => router.push("/studio")}
+          onClick={handleLogin}
+          disabled={isLoading}
         >
-          Login
+          {isLoading ? "Logging in..." : "Login"}
         </Button>
 
         {/* Sign Up Link */}
         <p className="text-white/70 text-sm text-center mt-4">
           Don't have an account?{" "}
-          <span
-            className="text-[#D89F5C] cursor-pointer"
-            onClick={() => router.push("/signup")}
-          >
+          <span className="text-[#D89F5C] cursor-pointer" onClick={() => router.push("/sign-up")}>
             Sign Up
           </span>
         </p>

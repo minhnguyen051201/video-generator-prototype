@@ -4,12 +4,33 @@ import Button from "../../components/Button";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Home } from "lucide-react";
+import { registerUser } from "../../services/user/userService";
 
 export default function SignUpPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const router = useRouter();
+
+  const handleSignUp = async () => {
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      await registerUser({ username: name, email, password });
+      router.push("/log-in");
+    } catch (signUpError) {
+      if (signUpError instanceof Error) {
+        setError(signUpError.message);
+      } else {
+        setError("An unexpected error occurred.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <main className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-[#5D4A3C] to-[#3E2F25] px-4 relative">
@@ -55,12 +76,15 @@ export default function SignUpPage() {
           className="w-full mb-6 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
 
+        {error ? <p className="text-red-400 text-sm mb-4 text-center">{error}</p> : null}
+
         {/* Sign Up Button */}
         <Button
           className="!bg-[#D89F5C] !text-[#4A392C] w-full py-2 rounded-md text-lg font-semibold hover:opacity-90"
-          onClick={() => router.push("/login")}
+          onClick={handleSignUp}
+          disabled={isLoading}
         >
-          Sign Up
+          {isLoading ? "Signing up..." : "Sign Up"}
         </Button>
 
         {/* Login Link */}
@@ -68,7 +92,7 @@ export default function SignUpPage() {
           Already have an account?{" "}
           <span
             className="text-[#D89F5C] cursor-pointer"
-            onClick={() => router.push("/login")}
+            onClick={() => router.push("/log-in")}
           >
             Login
           </span>
