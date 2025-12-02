@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { VideoPlayer } from "../../components/VideoPlayer/VideoPlayer";
-import { useEffect } from "react";
 import { Home } from "lucide-react";
+import {
+  GeneratedVideo,
+  GenerateVideoRequest,
+  generateVideo,
+} from "../../services/video/videoService";
 
 // --- Icons ---
 const IconDownload = (props: any) => (
@@ -142,6 +146,12 @@ const SliderControl: React.FC<{
 export default function Page() {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
+  const defaultVideoUrl =
+    "https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4";
+
+  const [videoSource, setVideoSource] = useState(defaultVideoUrl);
 
   // const [cameraAngle, setCameraAngle] = useState('medium');
   const [activeStyles, setActiveStyles] = useState(["Vintage Americana"]);
@@ -150,6 +160,16 @@ export default function Page() {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [audiosEnabled, setAudiosEnabled] = useState(false);
+  const [positivePrompt, setPositivePrompt] = useState("");
+  const [negativePrompt, setNegativePrompt] = useState("");
+  const [userId, setUserId] = useState<number>(1);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(
+    null,
+  );
 
   // const styleTags = ['Styles', 'Artistic', 'Moody', 'Vintage Americana', 'Studio', 'Retro VHS'];
   // const lightingTags = ['Tracking', 'Studio', 'Neon', 'Dramatic', 'Golden Hour', 'Shake'];
@@ -159,6 +179,64 @@ export default function Page() {
     setActiveStyles((prev) =>
       prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
     );
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) {
+      setSelectedImage(null);
+      return;
+    }
+
+    setSelectedImage(files[0]);
+  };
+
+  const handleGenerate = async () => {
+    if (!positivePrompt.trim()) {
+      setError("Please provide a positive prompt.");
+      return;
+    }
+
+    if (!userId || Number.isNaN(userId)) {
+      setError("Please provide a valid user ID.");
+      return;
+    }
+
+    setIsGenerating(true);
+    setError(null);
+    setStatusMessage(null);
+
+    const payload: GenerateVideoRequest = {
+      userId,
+      positivePrompt: positivePrompt.trim(),
+    };
+
+    if (negativePrompt.trim()) {
+      payload.negativePrompt = negativePrompt.trim();
+    }
+
+    if (selectedImage) {
+      payload.image = selectedImage;
+    }
+
+    try {
+      const response = await generateVideo(payload);
+      setGeneratedVideo(response);
+      setStatusMessage("Video generation started successfully.");
+
+      const nextSource = response.localpath || response.filename;
+      if (nextSource) {
+        setVideoSource(nextSource);
+      }
+    } catch (generationError) {
+      if (generationError instanceof Error) {
+        setError(generationError.message);
+      } else {
+        setError("An unexpected error occurred while generating the video.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   useEffect(() => {
@@ -264,16 +342,87 @@ export default function Page() {
 
         {/* Center Column */}
         <div className="col-span-1 md:col-span-3 flex flex-col space-y-4">
-          <div className="flex space-x-2 bg-[#222222] p-2 rounded-xl">
-            <input
-              type="text"
-              className="flex-grow bg-transparent text-white border-none focus:ring-0 focus:outline-none placeholder-gray-500 py-2 px-3"
-              placeholder="Describe the scene you want to generate"
-              defaultValue="Describe the scene you want to generate"
-            />
-            <Button variant="primary" className="py-2.5 px-6">
-              GENERATE
-            </Button>
+          <div className="space-y-3 bg-[#222222] p-4 rounded-xl">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
+              <input
+                type="text"
+                value={positivePrompt}
+                onChange={(event) => setPositivePrompt(event.target.value)}
+                className="flex-grow bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
+                placeholder="Describe the scene you want to generate"
+              />
+              <input
+                type="text"
+                value={negativePrompt}
+                onChange={(event) => setNegativePrompt(event.target.value)}
+                className="flex-grow bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
+                placeholder="(Optional) What should be avoided?"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:items-center">
+              <div className="flex items-center gap-2">
+                <label className="text-sm text-gray-400">User ID</label>
+                <input
+                  type="number"
+                  min={1}
+                  value={userId ?? ""}
+                  onChange={(event) => setUserId(Number(event.target.value))}
+                  className="w-full bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
+                  placeholder="e.g. 1"
+                />
+              </div>
+
+              <div
+                className="flex items-center justify-between gap-3 border border-dashed border-gray-600 rounded-lg px-3 py-2 cursor-pointer hover:border-[#FF6633]"
+                onClick={() => imageInputRef.current?.click()}
+              >
+                <div className="flex flex-col text-sm text-gray-400">
+                  <span className="font-medium text-white">Upload image (optional)</span>
+                  <span className="text-xs text-gray-500">
+                    {selectedImage ? selectedImage.name : "PNG, JPG, JPEG"}
+                  </span>
+                </div>
+                <input
+                  ref={imageInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+                <IconDownload className="w-5 h-5 rotate-180 text-gray-400" />
+              </div>
+
+              <div className="flex justify-end">
+                <Button
+                  variant="primary"
+                  className="py-2.5 px-6"
+                  onClick={handleGenerate}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? "GENERATING..." : "GENERATE"}
+                </Button>
+              </div>
+            </div>
+
+            {error ? (
+              <p className="text-red-400 text-sm">{error}</p>
+            ) : null}
+            {statusMessage ? (
+              <p className="text-green-400 text-sm">{statusMessage}</p>
+            ) : null}
+            {generatedVideo ? (
+              <div className="text-xs text-gray-400 space-y-0.5">
+                <p>
+                  Request ID: <span className="text-white">{generatedVideo.id}</span>
+                </p>
+                {generatedVideo.filename ? (
+                  <p>
+                    Filename: <span className="text-white">{generatedVideo.filename}</span>
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex flex-wrap gap-2">
@@ -287,7 +436,7 @@ export default function Page() {
           <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl flex-grow flex items-center justify-center">
             <VideoPlayer
               ref={videoRef}
-              src="https://test-videos.co.uk/vids/bigbuckbunny/mp4/h264/720/Big_Buck_Bunny_720_10s_1MB.mp4"
+              src={videoSource}
               onDurationChange={(total) => setDuration(total)}
               onTimeUpdate={(time) => setCurrentTime(time)}
             />
@@ -339,25 +488,12 @@ export default function Page() {
           {/* Upload Files */}
           <div
             className="flex flex-col items-center justify-center py-6 border border-dashed border-gray-600 rounded-lg mb-6 text-gray-400 hover:border-[#FF6633] cursor-pointer transition-colors"
-            onClick={() => {
-              const input = document.createElement("input");
-              input.type = "file";
-              input.multiple = true;
-              input.onchange = (e: any) => {
-                const files = e.target.files;
-                if (files && files.length > 0) {
-                  alert(
-                    `${files.length} file(s) selected: ${Array.from(files)
-                      .map((f) => (f as File).name)
-                      .join(", ")}`,
-                  );
-                }
-              };
-              input.click();
-            }}
+            onClick={() => imageInputRef.current?.click()}
           >
             <IconDownload className="w-6 h-6 rotate-180" />
-            <span className="mt-2 text-sm">Upload files</span>
+            <span className="mt-2 text-sm">
+              {selectedImage ? selectedImage.name : "Upload files"}
+            </span>
           </div>
 
           {/* Export */}
