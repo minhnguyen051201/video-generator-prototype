@@ -243,7 +243,7 @@ export default function Page() {
     if (duration > 0 && currentTime > duration) {
       setCurrentTime(duration);
     }
-  }, [duration]);
+  }, [duration, currentTime]);
 
   return (
     <div className="min-h-screen bg-[#111111] text-white p-4 md:p-8 font-inter">
