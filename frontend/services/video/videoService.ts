@@ -11,7 +11,7 @@ export type GeneratedVideo = {
   input_image?: string | null;
   positive_prompt?: string | null;
   negative_prompt?: string | null;
-  duration?: number | string | null;
+  duration?: number | null;
   resolution?: string | null;
   width?: number | string | null;
   height?: number | string | null;
@@ -19,10 +19,11 @@ export type GeneratedVideo = {
   localpath?: string | null;
   filename?: string | null;
   format?: string | null;
+  source_video?: string | null;
   created_at?: string;
 };
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+const API_BASE_URL = "http://localhost:8000";
 
 export async function generateVideo(
   payload: GenerateVideoRequest,
@@ -44,6 +45,8 @@ export async function generateVideo(
     body: formData,
   });
 
+  console.log({ formData });
+
   if (!response.ok) {
     let errorMessage = "Failed to trigger video generation.";
 
@@ -60,4 +63,32 @@ export async function generateVideo(
   }
 
   return response.json();
+}
+
+export async function getCurrentUserId(): Promise<number | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const token = localStorage.getItem("authToken");
+  if (!token) {
+    return null;
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/v1/users/me`, {
+      method: "GET",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const user = (await response.json()) as { id?: number };
+    return typeof user.id === "number" ? user.id : null;
+  } catch (error) {
+    console.error("Failed to fetch current user", error);
+    return null;
+  }
 }

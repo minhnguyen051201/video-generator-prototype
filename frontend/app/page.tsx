@@ -24,10 +24,6 @@ const HeaderLink = ({
 export default function Page() {
   const router = useRouter();
 
-  const primaryBg = "bg-[#5D4A3C]";
-  const accentColor = "bg-[#D89F5C]";
-  const secondaryColor = "#A7612B";
-
   return (
     <main className="flex flex-col min-h-screen bg-gradient-to-b from-[#5D4A3C] to-[#3E2F25] relative px-4">
       {/* Decorative floating shapes */}

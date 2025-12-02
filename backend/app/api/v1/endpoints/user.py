@@ -8,7 +8,7 @@ Purpose:
 """
 
 from datetime import timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 
 from app.db.session import get_db
@@ -70,6 +70,62 @@ def login_user(credentials: UserLogin, db: Session = Depends(get_db)):
     )
 
     return Token(access_token=access_token)
+
+
+# ---------------------------------------------------------------------
+# Get Current User from Bearer Token
+# ---------------------------------------------------------------------
+@router.get("/me", response_model=UserOut)
+def get_current_user(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+):
+    """Return the authenticated user by decoding the bearer token."""
+
+    if not authorization:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authorization header missing.",
+        )
+
+    scheme, _, token = authorization.partition(" ")
+
+    if scheme.lower() != "bearer" or not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid authorization header.",
+        )
+
+    try:
+        payload = security.decode_access_token(token)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token.",
+        )
+
+    subject = payload.get("sub")
+
+    try:
+        user_id = int(subject) if subject is not None else None
+    except (TypeError, ValueError):
+        user_id = None
+
+    if user_id is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload.",
+        )
+
+    user = user_service.get_user_by_id(db, user_id)
+
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+
+    return user
 
 
 # ---------------------------------------------------------------------

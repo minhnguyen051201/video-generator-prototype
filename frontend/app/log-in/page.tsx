@@ -20,7 +20,7 @@ export default function LoginPage() {
     try {
       const token = await loginUser({ email, password });
       localStorage.setItem("authToken", token.access_token);
-      router.push("/studio");
+      router.push("/video-generation");
     } catch (loginError) {
       if (loginError instanceof Error) {
         setError(loginError.message);
@@ -46,8 +46,12 @@ export default function LoginPage() {
 
       {/* Login Card */}
       <div className="relative w-full max-w-md bg-[#4F3D32] rounded-xl p-8 shadow-lg z-10">
-        <h1 className="text-4xl font-bold text-[#EFDECD] mb-2 text-center">Login</h1>
-        <p className="text-white/80 text-center mb-6">Welcome back! Please enter your credentials.</p>
+        <h1 className="text-4xl font-bold text-[#EFDECD] mb-2 text-center">
+          Login
+        </h1>
+        <p className="text-white text-center mb-6">
+          Welcome back! Please enter your credentials.
+        </p>
 
         {/* Form Inputs */}
         <input
@@ -65,7 +69,9 @@ export default function LoginPage() {
           className="w-full mb-6 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
 
-        {error ? <p className="text-red-400 text-sm mb-4 text-center">{error}</p> : null}
+        {error ? (
+          <p className="text-red-400 text-sm mb-4 text-center">{error}</p>
+        ) : null}
 
         {/* Login Button */}
         <Button
@@ -79,7 +85,10 @@ export default function LoginPage() {
         {/* Sign Up Link */}
         <p className="text-white/70 text-sm text-center mt-4">
           Don't have an account?{" "}
-          <span className="text-[#D89F5C] cursor-pointer" onClick={() => router.push("/sign-up")}>
+          <span
+            className="text-[#D89F5C] cursor-pointer"
+            onClick={() => router.push("/sign-up")}
+          >
             Sign Up
           </span>
         </p>

@@ -108,24 +108,6 @@ async def wait_for_comfy_result(prompt_id: str, timeout: int = 900):
             await asyncio.sleep(2)
 
 
-# async def wait_for_comfy_result(prompt_id: str, timeout: int = 120):
-#     try:
-#         async with websockets.connect(COMFY_WS_URL) as ws:
-#             while True:
-#                 try:
-#                     msg = await asyncio.wait_for(ws.recv(), timeout=timeout)
-#                 except asyncio.TimeoutError:
-#                     raise RuntimeError("Timed out waiting for ComfyUI result")
-#
-#                 event = json.loads(msg)
-#
-#                 if event.get("type") == "result":
-#                     return event["data"]
-#
-#     except Exception as e:
-#         raise RuntimeError(f"WebSocket failed: {str(e)}")
-#
-
 # -----------------------------------------------------------
 # Extract metadata from ComfyUI output video
 # -----------------------------------------------------------
@@ -140,6 +122,7 @@ def extract_video_metadata(filename: str | None):
     try:
         # --- 1. Download video bytes from ComfyUI ---
         url = f"http://host.docker.internal:8188/view?filename={filename}&type=output"
+
         resp = requests.get(url)
 
         if resp.status_code != 200:
@@ -235,6 +218,7 @@ async def generate_video_flow(positive_prompt, negative_prompt, image):
         filename = result_json.get("filename")
         localpath = result_json.get("localpath")
         format = result_json.get("format")
+        source_video = f"http://host.docker.internal:8188/view?filename={filename}.mp4"
 
         # Extract ffprobe metadata
         metadata = extract_video_metadata(filename)
@@ -246,6 +230,7 @@ async def generate_video_flow(positive_prompt, negative_prompt, image):
             "format": format,
             "localpath": localpath,
             "metadata": metadata,
+            "source_video": source_video,
         }
 
     except Exception as e:

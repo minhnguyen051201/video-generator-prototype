@@ -29,6 +29,7 @@ class Video(Base):
     filename = Column(String(255), nullable=True)
     localpath = Column(String(255), nullable=True)
     format = Column(String(255), nullable=True)
+    source_video = Column(String(255), nullable=True)
 
     created_at = Column(DateTime, default=datetime.now)
 

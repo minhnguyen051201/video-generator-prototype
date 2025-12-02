@@ -29,6 +29,7 @@ class VideoBase(BaseModel):
     localpath: Optional[str] = Field(None, description="Local path")
     filename: Optional[str] = Field(None, description="Output video filename")
     format: Optional[str] = Field(None, description="format of the video")
+    source_video: Optional[str] = Field(None, description="Video source")
 
     created_at: datetime
 
