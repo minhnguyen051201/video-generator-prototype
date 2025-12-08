@@ -48,15 +48,29 @@ export async function generateVideo(
   console.log({ formData });
 
   if (!response.ok) {
-    let errorMessage = "Failed to trigger video generation.";
+    let errorMessage = `Failed to trigger video generation (status ${response.status})`;
 
     try {
       const errorBody = await response.json();
       if (typeof errorBody.detail === "string") {
         errorMessage = errorBody.detail;
+      } else if (
+        errorBody?.detail &&
+        typeof (errorBody.detail as { message?: unknown }).message === "string"
+      ) {
+        errorMessage = (errorBody.detail as { message: string }).message;
+      } else if (typeof errorBody.message === "string") {
+        errorMessage = errorBody.message;
       }
     } catch {
-      // Ignore JSON parsing issues and use the default message
+      try {
+        const fallbackText = await response.text();
+        if (fallbackText) {
+          errorMessage = fallbackText;
+        }
+      } catch {
+        // Ignore parsing errors and keep the default message
+      }
     }
 
     throw new Error(errorMessage);

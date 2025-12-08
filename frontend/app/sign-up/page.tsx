@@ -56,6 +56,7 @@ export default function SignUpPage() {
         {/* Form Inputs */}
         <input
           type="text"
+          style={{ color: "black" }}
           placeholder="Full Name"
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -64,19 +65,23 @@ export default function SignUpPage() {
         <input
           type="email"
           placeholder="Email"
+          style={{ color: "black" }}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full mb-4 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
         <input
           type="password"
+          style={{ color: "black" }}
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="w-full mb-6 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
 
-        {error ? <p className="text-red-400 text-sm mb-4 text-center">{error}</p> : null}
+        {error ? (
+          <p className="text-red-400 text-sm mb-4 text-center">{error}</p>
+        ) : null}
 
         {/* Sign Up Button */}
         <Button

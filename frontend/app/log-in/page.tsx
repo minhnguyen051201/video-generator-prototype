@@ -57,11 +57,13 @@ export default function LoginPage() {
         <input
           type="email"
           placeholder="Email"
+          style={{ color: "black" }}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="w-full mb-4 px-4 py-2 rounded-md bg-white/10 placeholder-white/50 text-white focus:outline-none focus:ring-2 focus:ring-[#D89F5C] focus:bg-white/20"
         />
         <input
+          style={{ color: "black" }}
           type="password"
           placeholder="Password"
           value={password}

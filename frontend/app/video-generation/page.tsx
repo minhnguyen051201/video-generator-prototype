@@ -31,8 +31,7 @@ export default function Page() {
     width: 448,
     height: 448,
     fps: 24,
-    localpath: null,
-    filename: "ltxv-base_00006.mp4",
+    filename: "ltxv-base_000010.mp4",
     format: "video/h264-mp4",
     created_at: "2025-12-01T22:34:28",
     id: 1,
@@ -52,12 +51,8 @@ export default function Page() {
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   // generated video output
-  const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(
-    data,
-  );
-  const [videoSource, setVideoSource] = useState(
-    "http://localhost:8188/view?filename=ltxv-base_00006.mp4",
-  );
+  const [generatedVideo, setGeneratedVideo] = useState<GeneratedVideo | null>(data);
+  const [videoSource, setVideoSource] = useState("");
 
   // functions
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,12 +97,7 @@ export default function Page() {
       const response = await generateVideo(payload);
       setGeneratedVideo(response);
       setStatusMessage("Video generation started successfully.");
-      console.log({ response });
-
-      const nextSource = response.source_video;
-      if (nextSource) {
-        setVideoSource(nextSource);
-      }
+      setVideoSource(response.source_video);
     } catch (generationError) {
       if (generationError instanceof Error) {
         setError(generationError.message);
@@ -156,7 +146,7 @@ export default function Page() {
               Duration
             </h3>
             <span className="text-white">
-              {generatedVideo.duration.toFixed()}
+              {generateVideo ? generatedVideo.duration.toFixed() : ""}
             </span>
           </div>
 
@@ -165,7 +155,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Resolution
             </h3>
-            <span className="text-white">{generatedVideo.resolution}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.resolution : ""}</span>
           </div>
 
           {/* Width */}
@@ -173,7 +163,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Width
             </h3>
-            <span className="text-white">{generatedVideo.width}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.width : ""}</span>
           </div>
 
           {/* Height */}
@@ -181,7 +171,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Resolution
             </h3>
-            <span className="text-white">{generatedVideo.height}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.height : ""}</span>
           </div>
 
           {/* fps */}
@@ -189,15 +179,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Fps
             </h3>
-            <span className="text-white">{generatedVideo.fps}fps</span>
-          </div>
-
-          {/* Localpath */}
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
-              Localpath
-            </h3>
-            <span className="text-white">{generatedVideo.localpath}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.fps : ""}fps</span>
           </div>
 
           {/* Format */}
@@ -205,7 +187,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Format
             </h3>
-            <span className="text-white">{generatedVideo.format}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.format : ""}</span>
           </div>
 
           {/* Created at */}
@@ -213,7 +195,7 @@ export default function Page() {
             <h3 className="text-gray-400 font-semibold uppercase text-xs tracking-wider">
               Created at
             </h3>
-            <span className="text-white">{generatedVideo.created_at}</span>
+            <span className="text-white">{generateVideo ? generatedVideo.created_at : ""}</span>
           </div>
         </div>
 
@@ -224,6 +206,7 @@ export default function Page() {
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-2">
               <input
                 type="text"
+                style={{ color: "black" }}
                 className="flex-grow bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
                 placeholder="Describe the scene you want to generate"
                 value={positivePrompt}
@@ -231,6 +214,7 @@ export default function Page() {
               />
               <input
                 type="text"
+                style={{ color: "black" }}
                 className="flex-grow bg-transparent text-white border border-gray-700 rounded-md focus:ring-1 focus:ring-[#FF6633] focus:outline-none placeholder-gray-500 py-2 px-3"
                 placeholder="(Optional) What should be avoided?"
                 value={negativePrompt}
@@ -270,18 +254,18 @@ export default function Page() {
           </div>
 
           {/* Video generation */}
-          <div className="space-y-3 bg-[#222222] p-4 rounded-xl w-full h-full flex justify-center items-center">
-            <video width="448" height="448" controls preload="none" autoPlay>
-              <source src={videoSource} type="video/mp4" />
-              <track
-                src={videoSource}
-                kind="subtitles"
-                srcLang="en"
-                label="English"
-              />
-              Your browser does not support the video tag.
-            </video>
-          </div>
+
+          {videoSource ? (
+            <div className="space-y-3 bg-[#222222] p-4 rounded-xl w-full h-full flex justify-center items-center">
+              <video width="448" height="448" controls preload="none" autoPlay>
+                <source
+                  key={videoSource} // 👈 forces React render
+                  src={videoSource}
+                  type="video/mp4"
+                />
+              </video>
+            </div>
+          ) : <div></div>}
         </div>
 
         {/* Right Column */}

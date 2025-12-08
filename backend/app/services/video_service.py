@@ -218,7 +218,7 @@ async def generate_video_flow(positive_prompt, negative_prompt, image):
         filename = result_json.get("filename")
         localpath = result_json.get("localpath")
         format = result_json.get("format")
-        source_video = f"http://host.docker.internal:8188/view?filename={filename}.mp4"
+        source_video = f"http://localhost:8188/view?filename={filename}"
 
         # Extract ffprobe metadata
         metadata = extract_video_metadata(filename)
